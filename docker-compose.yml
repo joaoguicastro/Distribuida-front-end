@@ -1,0 +1,67 @@
+version: '3.9'
+
+services:
+  
+  healthsys-frontend:
+    build: 
+      context: ./healthsys-frontend 
+      dockerfile: Dockerfile
+    container_name: healthsys-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - healthsys-network
+    restart: unless-stopped
+
+  
+  api-gateway:
+    build:
+      context: ./api-gateway 
+      dockerfile: Dockerfile
+    container_name: healthsys-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_URL: http://eureka-server:8761/eureka
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - healthsys-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: healthsys-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - healthsys-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  healthsys-network:
+    name: healthsys-network
+    driver: bridge
