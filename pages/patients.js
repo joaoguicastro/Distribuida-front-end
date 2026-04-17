@@ -5,7 +5,7 @@ import useHealthSysData from "../hooks/useHealthSysData";
 const emptyForm = {
   name: "",
   birthDate: "",
-  gender: "",
+  sexo: "",
   phone: "",
   allergy: "",
   vaccine: ""
@@ -14,6 +14,8 @@ const emptyForm = {
 export default function PatientsPage() {
   const { data, loaded, addPatient } = useHealthSysData();
   const [form, setForm] = useState(emptyForm);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   if (!loaded) {
     return <div className="loading-screen">Carregando dados...</div>;
@@ -24,9 +26,19 @@ export default function PatientsPage() {
     setForm({ ...form, [name]: value });
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    addPatient(form);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      await addPatient(form);
+      setSuccessMessage("Paciente cadastrado no backend com sucesso.");
+    } catch (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
     setForm(emptyForm);
   }
 
@@ -54,11 +66,11 @@ export default function PatientsPage() {
 
           <label>
             Sexo
-            <select name="gender" value={form.gender} onChange={handleChange} required>
+            <select name="sexo" value={form.sexo} onChange={handleChange} required>
               <option value="">Selecione</option>
-              <option value="Feminino">Feminino</option>
-              <option value="Masculino">Masculino</option>
-              <option value="Outro">Outro</option>
+              <option value="FEMININO">FEMININO</option>
+              <option value="MASCULINO">MASCULINO</option>
+              <option value="OUTROS">OUTROS</option>
             </select>
           </label>
 
@@ -80,6 +92,9 @@ export default function PatientsPage() {
           <button className="primary-button" type="submit">
             Salvar paciente
           </button>
+
+          {errorMessage && <p className="error-text">{errorMessage}</p>}
+          {successMessage && <p className="success-text">{successMessage}</p>}
         </form>
 
         <div className="card">
@@ -98,7 +113,7 @@ export default function PatientsPage() {
                 {data.patients.map((patient) => (
                   <tr key={patient.id}>
                     <td>{patient.name}</td>
-                    <td>{patient.phone}</td>
+                    <td>{patient.telefone || patient.phone}</td>
                     <td>{patient.allergy || "Nao informado"}</td>
                     <td>{patient.vaccine || "Nao informado"}</td>
                   </tr>

@@ -61,9 +61,9 @@ export default function DashboardPage() {
               <div className="list-row" key={patient.id}>
                 <div>
                   <strong>{patient.name}</strong>
-                  <p>{patient.phone}</p>
+                  <p>{patient.telefone || patient.phone}</p>
                 </div>
-                <span className="tag">{patient.vaccine}</span>
+                <span className="tag">{patient.vaccine || "Sem vacina"}</span>
               </div>
             ))}
           </div>

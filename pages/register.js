@@ -28,19 +28,19 @@ export default function RegisterPage() {
     setForm({ ...form, [name]: value });
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
 
-    const result = register(form);
+    const result = await register(form);
 
     if (!result.success) {
       setErrorMessage(result.message);
       return;
     }
 
-    setSuccessMessage("Cadastro criado com sucesso. Agora voce pode fazer login.");
+    setSuccessMessage("Cadastro criado com sucesso no backend. Agora voce pode fazer login.");
     setForm(emptyForm);
   }
 

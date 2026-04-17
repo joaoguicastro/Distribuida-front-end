@@ -25,9 +25,10 @@ export default function LoginPage() {
     setForm({ ...form, [name]: value });
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    const result = login(form.email, form.senha);
+    setErrorMessage("");
+    const result = await login(form.email, form.senha);
 
     if (!result.success) {
       setErrorMessage(result.message);
@@ -96,8 +97,8 @@ export default function LoginPage() {
 
         <div className="dev-box">
           <p className="dev-box-title">Usuario de exemplo</p>
-          <p>Email: medico@healthsys.com</p>
-          <p>Senha: 123456</p>
+          <p>Use um usuario real cadastrado no backend.</p>
+          <p>Se o backend ainda estiver incompleto, use o bypass de dev.</p>
         </div>
 
         <p className="auth-link-text">

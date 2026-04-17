@@ -1,40 +1,28 @@
 import { useEffect, useState } from "react";
+import { loginUser, registerUser } from "../lib/api";
 
-const USERS_KEY = "healthsys-users";
 const SESSION_KEY = "healthsys-session";
 
-const initialUsers = [
-  {
-    id: 1,
-    nome: "Medico Demo",
-    perfil: "MEDICO",
-    email: "medico@healthsys.com",
-    senha: "123456"
-  },
-  {
-    id: 2,
-    nome: "Paciente Demo",
-    perfil: "PACIENTE",
-    email: "paciente@healthsys.com",
-    senha: "123456"
+function parseJwt(token) {
+  try {
+    const payload = token.split(".")[1];
+    const normalizedPayload = payload
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(Math.ceil(payload.length / 4) * 4, "=");
+    const decodedPayload = window.atob(normalizedPayload);
+    return JSON.parse(decodedPayload);
+  } catch {
+    return {};
   }
-];
+}
 
 export default function useAuth() {
-  const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const savedUsers = window.localStorage.getItem(USERS_KEY);
     const savedSession = window.localStorage.getItem(SESSION_KEY);
-
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
-    } else {
-      window.localStorage.setItem(USERS_KEY, JSON.stringify(initialUsers));
-      setUsers(initialUsers);
-    }
 
     if (savedSession) {
       setCurrentUser(JSON.parse(savedSession));
@@ -43,33 +31,37 @@ export default function useAuth() {
     setLoaded(true);
   }, []);
 
-  function saveUsers(nextUsers) {
-    setUsers(nextUsers);
-    window.localStorage.setItem(USERS_KEY, JSON.stringify(nextUsers));
-  }
-
   function saveSession(user) {
     setCurrentUser(user);
     window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
   }
 
-  function login(email, senha) {
-    const foundUser = users.find(
-      (user) => user.email === email && user.senha === senha
-    );
+  async function login(email, senha) {
+    try {
+      const loginResponse = await loginUser({ email, senha });
+      const token = loginResponse.token_acesso;
+      const tokenData = parseJwt(token);
 
-    if (!foundUser) {
+      const userSession = {
+        id: Date.now(),
+        nome: tokenData.nome || email,
+        perfil: tokenData.role || "USUARIO",
+        email: tokenData.sub || email,
+        token,
+        expiraEm: loginResponse.expiraEm
+      };
+
+      saveSession(userSession);
+
+      return {
+        success: true
+      };
+    } catch (error) {
       return {
         success: false,
-        message: "Email ou senha invalidos."
+        message: error.message
       };
     }
-
-    saveSession(foundUser);
-
-    return {
-      success: true
-    };
   }
 
   function loginAsDev() {
@@ -78,23 +70,14 @@ export default function useAuth() {
       nome: "Dev Local",
       perfil: "MEDICO",
       email: "dev@local",
-      senha: "",
+      token: "dev-bypass-token",
       devBypass: true
     };
 
     saveSession(devUser);
   }
 
-  function register(userData) {
-    const emailAlreadyExists = users.some((user) => user.email === userData.email);
-
-    if (emailAlreadyExists) {
-      return {
-        success: false,
-        message: "Ja existe um usuario com esse email."
-      };
-    }
-
+  async function register(userData) {
     if (userData.perfil !== "MEDICO" && userData.perfil !== "PACIENTE") {
       return {
         success: false,
@@ -102,20 +85,19 @@ export default function useAuth() {
       };
     }
 
-    const newUser = {
-      id: Date.now(),
-      nome: userData.nome,
-      perfil: userData.perfil,
-      email: userData.email,
-      senha: userData.senha
-    };
+    try {
+      const savedUser = await registerUser(userData);
 
-    const nextUsers = [...users, newUser];
-    saveUsers(nextUsers);
-
-    return {
-      success: true
-    };
+      return {
+        success: true,
+        user: savedUser
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message
+      };
+    }
   }
 
   function logout() {
@@ -124,7 +106,6 @@ export default function useAuth() {
   }
 
   return {
-    users,
     currentUser,
     loaded,
     login,

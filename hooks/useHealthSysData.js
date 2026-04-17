@@ -4,8 +4,10 @@ import {
   initialRecords,
   initialTriages
 } from "../data/initialData";
+import { createPatient } from "../lib/api";
 
 const STORAGE_KEY = "healthsys-data";
+const SESSION_KEY = "healthsys-session";
 
 const initialState = {
   patients: initialPatients,
@@ -34,13 +36,33 @@ export default function useHealthSysData() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextData));
   }
 
-  function addPatient(patient) {
+  async function addPatient(patient) {
+    const savedSession = window.localStorage.getItem(SESSION_KEY);
+    const session = savedSession ? JSON.parse(savedSession) : null;
+    const patientPayload = {
+      nome: patient.name,
+      dataNascimento: patient.birthDate,
+      sexo: patient.sexo,
+      telefone: patient.phone
+    };
+    const savedPatient = await createPatient(patientPayload, session?.token);
     const nextData = {
       ...data,
-      patients: [...data.patients, { id: Date.now(), ...patient }]
+      patients: [
+        ...data.patients,
+        {
+          ...savedPatient,
+          name: savedPatient.nome,
+          birthDate: savedPatient.dataNascimento,
+          phone: savedPatient.telefone,
+          allergy: patient.allergy,
+          vaccine: patient.vaccine
+        }
+      ]
     };
 
     saveData(nextData);
+    return savedPatient;
   }
 
   function addRecord(record) {
