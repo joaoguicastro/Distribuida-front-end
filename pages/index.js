@@ -70,14 +70,6 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="card">
-        <h3>Como este frontend foi pensado</h3>
-        <p>
-          Esta versao usa dados simulados e salvos no navegador para facilitar o
-          estudo. Assim, voce consegue entender o fluxo completo antes de ligar o
-          sistema a um backend real com microservices.
-        </p>
-      </section>
     </ProtectedPage>
   );
 }

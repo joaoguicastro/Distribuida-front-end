@@ -17,9 +17,6 @@ export default function Layout({ title, children, currentUser, onLogout }) {
         <div>
           <p className="logo-label">HealthSys</p>
           <h1 className="logo-title">Gestao Hospitalar</h1>
-          <p className="logo-text">
-            Exemplo simples em Next.js para estudar frontend.
-          </p>
         </div>
 
         {currentUser && (
