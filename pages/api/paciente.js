@@ -1,4 +1,4 @@
-const PATIENTS_BACKEND_URL = "http://localhost:8081/paciente";
+const PATIENTS_BACKEND_URL = "http://localhost:8080/paciente";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
