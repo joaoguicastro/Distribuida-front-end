@@ -3,23 +3,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import useAuth from "../hooks/useAuth";
 
-const emptyForm = {
-  nome: "",
-  perfil: "",
-  email: "",
-  senha: ""
-};
+const emptyForm = { nome: "", perfil: "", email: "", senha: "" };
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { currentUser, loaded, register } = useAuth();
+  const { currentUser, loaded, register, getDashboardRoute } = useAuth();
   const [form, setForm] = useState(emptyForm);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (loaded && currentUser) {
-      router.push("/");
+      router.push(getDashboardRoute(currentUser.perfil));
     }
   }, [loaded, currentUser, router]);
 
@@ -40,13 +35,11 @@ export default function RegisterPage() {
       return;
     }
 
-    setSuccessMessage("Cadastro criado com sucesso no backend. Agora voce pode fazer login.");
+    setSuccessMessage("Cadastro criado com sucesso. Agora voce pode fazer login.");
     setForm(emptyForm);
   }
 
-  if (!loaded) {
-    return <div className="loading-screen">Carregando...</div>;
-  }
+  if (!loaded) return <div className="loading-screen">Carregando...</div>;
 
   return (
     <main className="auth-page">
@@ -54,8 +47,8 @@ export default function RegisterPage() {
         <p className="logo-label">HealthSys</p>
         <h1>Cadastro de usuario</h1>
         <p>
-          O modelo segue sua entidade do backend: nome, perfil, email e senha.
-          O perfil so aceita MEDICO ou PACIENTE.
+          Informe nome, perfil, email e senha. O perfil define seu acesso na
+          plataforma apos o login.
         </p>
       </section>
 
@@ -74,6 +67,8 @@ export default function RegisterPage() {
               <option value="">Selecione</option>
               <option value="MEDICO">MEDICO</option>
               <option value="PACIENTE">PACIENTE</option>
+              {/* CORRIGIDO: RECEPCIONISTA adicionado */}
+              <option value="RECEPCIONISTA">RECEPCIONISTA</option>
             </select>
           </label>
 

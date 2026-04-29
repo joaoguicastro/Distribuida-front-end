@@ -3,20 +3,21 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import useAuth from "../hooks/useAuth";
 
-const emptyForm = {
-  email: "",
-  senha: ""
-};
+const emptyForm = { email: "", senha: "" };
+
+// Perfis disponíveis para bypass de dev
+const DEV_PERFIS = ["MEDICO", "RECEPCIONISTA", "PACIENTE", "ADMIN"];
 
 export default function LoginPage() {
   const router = useRouter();
-  const { currentUser, loaded, login, loginAsDev } = useAuth();
+  const { currentUser, loaded, login, loginAsDev, getDashboardRoute } = useAuth();
   const [form, setForm] = useState(emptyForm);
   const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (loaded && currentUser) {
-      router.push("/");
+      router.push(getDashboardRoute(currentUser.perfil));
     }
   }, [loaded, currentUser, router]);
 
@@ -28,24 +29,26 @@ export default function LoginPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     setErrorMessage("");
+    setLoading(true);
+
     const result = await login(form.email, form.senha);
+    setLoading(false);
 
     if (!result.success) {
       setErrorMessage(result.message);
       return;
     }
 
-    router.push("/");
+    // BUG CORRIGIDO: redireciona para o dashboard do perfil, não sempre "/"
+    router.push(result.redirectUrl);
   }
 
-  function handleDevLogin() {
-    loginAsDev();
-    router.push("/");
+  function handleDevLogin(perfil) {
+    const redirectUrl = loginAsDev(perfil);
+    router.push(redirectUrl);
   }
 
-  if (!loaded) {
-    return <div className="loading-screen">Carregando...</div>;
-  }
+  if (!loaded) return <div className="loading-screen">Carregando...</div>;
 
   return (
     <main className="auth-page">
@@ -53,8 +56,8 @@ export default function LoginPage() {
         <p className="logo-label">HealthSys</p>
         <h1>Login da plataforma</h1>
         <p>
-          Esta tela e simples de proposito. A ideia e estudar o fluxo de login
-          antes de ligar com o backend.
+          Acesse com suas credenciais. Voce sera redirecionado automaticamente
+          para o painel do seu perfil.
         </p>
       </section>
 
@@ -86,19 +89,26 @@ export default function LoginPage() {
 
           {errorMessage && <p className="error-text">{errorMessage}</p>}
 
-          <button className="primary-button" type="submit">
-            Entrar
+          <button className="primary-button" type="submit" disabled={loading}>
+            {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
 
-        <button className="secondary-button full-button" onClick={handleDevLogin} type="button">
-          Entrar com bypass de dev
-        </button>
-
         <div className="dev-box">
-          <p className="dev-box-title">Usuario de exemplo</p>
-          <p>Use um usuario real cadastrado no backend.</p>
-          <p>Se o backend ainda estiver incompleto, use o bypass de dev.</p>
+          <p className="dev-box-title">Bypass de desenvolvimento</p>
+          <p>Simule um perfil sem precisar do backend:</p>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
+            {DEV_PERFIS.map((perfil) => (
+              <button
+                key={perfil}
+                className="secondary-button"
+                onClick={() => handleDevLogin(perfil)}
+                type="button"
+              >
+                {perfil}
+              </button>
+            ))}
+          </div>
         </div>
 
         <p className="auth-link-text">

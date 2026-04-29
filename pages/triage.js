@@ -38,7 +38,7 @@ export default function TriagePage() {
   }
 
   return (
-    <ProtectedPage title="Teletriagem e Classificacao de Risco">
+    <ProtectedPage title="Teletriagem e Classificacao de Risco" allowedRoles={["MEDICO","RECEPCIONISTA","ADMIN"]}>
       <section className="two-columns">
         <form className="card form-card" onSubmit={handleSubmit}>
           <h3>Nova triagem</h3>

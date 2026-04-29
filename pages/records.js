@@ -39,7 +39,7 @@ export default function RecordsPage() {
   }
 
   return (
-    <ProtectedPage title="Prontuario Eletronico">
+    <ProtectedPage title="Prontuario Eletronico" allowedRoles={["MEDICO","ADMIN"]}>
       <section className="two-columns">
         <form className="card form-card" onSubmit={handleSubmit}>
           <h3>Novo registro medico</h3>

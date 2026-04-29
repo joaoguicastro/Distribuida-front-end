@@ -1,25 +1,18 @@
 import { useState } from "react";
-import ProtectedPage from "../components/ProtectedPage";
-import useHealthSysData from "../hooks/useHealthSysData";
+import ProtectedPage from "../../components/ProtectedPage";
+import useHealthSysData from "../../hooks/useHealthSysData";
 
 const emptyForm = {
-  name: "",
-  birthDate: "",
-  sexo: "",
-  phone: "",
-  allergy: "",
-  vaccine: ""
+  name: "", birthDate: "", sexo: "", phone: "", allergy: "", vaccine: ""
 };
 
-export default function PatientsPage() {
+export default function RecepcionistaDashboard() {
   const { data, loaded, addPatient } = useHealthSysData();
   const [form, setForm] = useState(emptyForm);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  if (!loaded) {
-    return <div className="loading-screen">Carregando dados...</div>;
-  }
+  if (!loaded) return <div className="loading-screen">Carregando...</div>;
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -30,40 +23,46 @@ export default function PatientsPage() {
     event.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
-
     try {
       await addPatient(form);
-      setSuccessMessage("Paciente cadastrado no backend com sucesso.");
+      setSuccessMessage("Paciente cadastrado com sucesso.");
+      setForm(emptyForm);
     } catch (error) {
       setErrorMessage(error.message);
-      return;
     }
-
-    setForm(emptyForm);
   }
 
   return (
-    <ProtectedPage title="Gestao de Pacientes" allowedRoles={["MEDICO","RECEPCIONISTA","ADMIN"]}>
+    <ProtectedPage title="Painel da Recepcionista" allowedRoles={["RECEPCIONISTA", "ADMIN"]}>
+      <section className="grid-cards">
+        <div className="card highlight">
+          <p className="card-label">Pacientes cadastrados</p>
+          <strong>{data.patients.length}</strong>
+        </div>
+        <div className="card">
+          <p className="card-label">Triagens realizadas</p>
+          <strong>{data.triages.length}</strong>
+        </div>
+        <div className="card">
+          <p className="card-label">Aguardando atendimento</p>
+          <strong>
+            {data.triages.filter((t) => t.status === "Em observacao").length}
+          </strong>
+        </div>
+      </section>
+
       <section className="two-columns">
         <form className="card form-card" onSubmit={handleSubmit}>
-          <h3>Novo paciente</h3>
+          <h3>Cadastrar novo paciente</h3>
 
           <label>
             Nome
             <input name="name" value={form.name} onChange={handleChange} required />
           </label>
-
           <label>
             Data de nascimento
-            <input
-              type="date"
-              name="birthDate"
-              value={form.birthDate}
-              onChange={handleChange}
-              required
-            />
+            <input type="date" name="birthDate" value={form.birthDate} onChange={handleChange} required />
           </label>
-
           <label>
             Sexo
             <select name="sexo" value={form.sexo} onChange={handleChange} required>
@@ -73,53 +72,37 @@ export default function PatientsPage() {
               <option value="OUTROS">OUTROS</option>
             </select>
           </label>
-
           <label>
             Telefone
             <input name="phone" value={form.phone} onChange={handleChange} required />
           </label>
-
           <label>
             Alergia
             <input name="allergy" value={form.allergy} onChange={handleChange} />
           </label>
-
           <label>
             Vacina
             <input name="vaccine" value={form.vaccine} onChange={handleChange} />
           </label>
 
-          <button className="primary-button" type="submit">
-            Salvar paciente
-          </button>
-
           {errorMessage && <p className="error-text">{errorMessage}</p>}
           {successMessage && <p className="success-text">{successMessage}</p>}
+
+          <button className="primary-button" type="submit">Cadastrar paciente</button>
         </form>
 
         <div className="card">
-          <h3>Lista de pacientes</h3>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Telefone</th>
-                  <th>Alergia</th>
-                  <th>Vacina</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.patients.map((patient) => (
-                  <tr key={patient.id}>
-                    <td>{patient.name}</td>
-                    <td>{patient.telefone || patient.phone}</td>
-                    <td>{patient.allergy || "Nao informado"}</td>
-                    <td>{patient.vaccine || "Nao informado"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <h3>Pacientes cadastrados hoje</h3>
+          <div className="stack-list">
+            {data.patients.slice(-5).reverse().map((patient) => (
+              <div className="list-row" key={patient.id}>
+                <div>
+                  <strong>{patient.name}</strong>
+                  <p>{patient.telefone || patient.phone}</p>
+                </div>
+                <span className="tag">{patient.sexo || "—"}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
