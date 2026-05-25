@@ -67,8 +67,7 @@ export default function RegisterPage() {
               <option value="">Selecione</option>
               <option value="MEDICO">MEDICO</option>
               <option value="PACIENTE">PACIENTE</option>
-              {/* CORRIGIDO: RECEPCIONISTA adicionado */}
-              <option value="RECEPCIONISTA">RECEPCIONISTA</option>
+              <option value="ADMIN">ADMIN</option>
             </select>
           </label>
 

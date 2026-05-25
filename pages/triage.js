@@ -1,120 +1,87 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ProtectedPage from "../components/ProtectedPage";
-import useHealthSysData from "../hooks/useHealthSysData";
+import { fetchTriagens } from "../lib/api";
 
-const emptyForm = {
-  patientId: "",
-  symptoms: "",
-  riskLevel: "",
-  status: "",
-  professional: ""
+const NIVEL_RISCO_LABEL = {
+  BAIXO: "Baixo",
+  MEDIO: "Médio",
+  ALTO: "Alto"
 };
 
+const NIVEL_RISCO_CLASS = {
+  BAIXO: "risk-baixo",
+  MEDIO: "risk-medio",
+  ALTO: "risk-alto"
+};
+
+const SESSION_KEY = "healthsys-session";
+
 export default function TriagePage() {
-  const { data, loaded, addTriage } = useHealthSysData();
-  const [form, setForm] = useState(emptyForm);
+  const [triagens, setTriagens] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(SESSION_KEY);
+    const session = saved ? JSON.parse(saved) : null;
+    const token = session?.token;
+
+    if (!token || session?.devBypass) {
+      setLoaded(true);
+      return;
+    }
+
+    fetchTriagens(token)
+      .then((data) => {
+        setTriagens(data);
+        setLoaded(true);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoaded(true);
+      });
+  }, []);
 
   if (!loaded) {
-    return <div className="loading-screen">Carregando dados...</div>;
-  }
-
-  function handleChange(event) {
-    const { name, value } = event.target;
-    setForm({ ...form, [name]: value });
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    addTriage({
-      ...form,
-      patientId: Number(form.patientId)
-    });
-    setForm(emptyForm);
-  }
-
-  function findPatientName(patientId) {
-    const patient = data.patients.find((item) => item.id === patientId);
-    return patient ? patient.name : "Paciente nao encontrado";
+    return <div className="loading-screen">Carregando triagens...</div>;
   }
 
   return (
-    <ProtectedPage title="Teletriagem e Classificacao de Risco" allowedRoles={["MEDICO","RECEPCIONISTA","ADMIN"]}>
-      <section className="two-columns">
-        <form className="card form-card" onSubmit={handleSubmit}>
-          <h3>Nova triagem</h3>
+    <ProtectedPage title="Painel de Triagem" allowedRoles={["MEDICO", "RECEPCIONISTA", "ADMIN"]}>
+      <div className="card" style={{ marginBottom: "16px", background: "#f0f7ff", border: "1px solid #bdd6ee" }}>
+        <p style={{ margin: 0, color: "#12344d" }}>
+          <strong>Como funciona:</strong> A triagem é gerada automaticamente pelo sistema quando um
+          paciente é cadastrado com sintomas. Os níveis de risco são classificados pelo backend como{" "}
+          <strong>BAIXO</strong>, <strong>MEDIO</strong> ou <strong>ALTO</strong>.
+        </p>
+      </div>
 
-          <label>
-            Paciente
-            <select name="patientId" value={form.patientId} onChange={handleChange} required>
-              <option value="">Selecione</option>
-              {data.patients.map((patient) => (
-                <option key={patient.id} value={patient.id}>
-                  {patient.name}
-                </option>
-              ))}
-            </select>
-          </label>
+      {error && <p className="error-text" style={{ marginBottom: "16px" }}>{error}</p>}
 
-          <label>
-            Sintomas
-            <textarea name="symptoms" value={form.symptoms} onChange={handleChange} rows="4" required />
-          </label>
-
-          <label>
-            Nivel de risco
-            <select name="riskLevel" value={form.riskLevel} onChange={handleChange} required>
-              <option value="">Selecione</option>
-              <option value="Verde">Verde</option>
-              <option value="Amarelo">Amarelo</option>
-              <option value="Laranja">Laranja</option>
-              <option value="Vermelho">Vermelho</option>
-            </select>
-          </label>
-
-          <label>
-            Status
-            <input name="status" value={form.status} onChange={handleChange} required />
-          </label>
-
-          <label>
-            Profissional
-            <input name="professional" value={form.professional} onChange={handleChange} required />
-          </label>
-
-          <button className="primary-button" type="submit">
-            Salvar triagem
-          </button>
-        </form>
-
+      {triagens.length === 0 ? (
         <div className="card">
-          <h3>Painel de triagens</h3>
-
-          <div className="stack-list">
-            {data.triages
-              .slice()
-              .reverse()
-              .map((triage) => (
-                <article className="record-card" key={triage.id}>
-                  <div className="section-title-row">
-                    <strong>{findPatientName(triage.patientId)}</strong>
-                    <span className={`tag risk-${triage.riskLevel.toLowerCase()}`}>
-                      {triage.riskLevel}
-                    </span>
-                  </div>
-                  <p>
-                    <strong>Sintomas:</strong> {triage.symptoms}
-                  </p>
-                  <p>
-                    <strong>Status:</strong> {triage.status}
-                  </p>
-                  <p>
-                    <strong>Profissional:</strong> {triage.professional}
-                  </p>
-                </article>
-              ))}
-          </div>
+          <p style={{ margin: 0, color: "#888" }}>Nenhuma triagem registrada ainda. Cadastre um paciente com sintomas para gerar a triagem automaticamente.</p>
         </div>
-      </section>
+      ) : (
+        <div className="stack-list">
+          {triagens.slice().reverse().map((triagem) => (
+            <article className="record-card" key={triagem.id}>
+              <div className="section-title-row">
+                <strong>Paciente ID: {triagem.pacienteId}</strong>
+                <span className={`tag ${NIVEL_RISCO_CLASS[triagem.nivelRisco] || ""}`}>
+                  {NIVEL_RISCO_LABEL[triagem.nivelRisco] || triagem.nivelRisco}
+                </span>
+              </div>
+              <p>
+                <strong>Status:</strong> {triagem.status || "—"}
+              </p>
+              <p>
+                <strong>ID da Triagem:</strong> {triagem.id}
+              </p>
+            </article>
+          ))}
+        </div>
+      )}
     </ProtectedPage>
   );
 }

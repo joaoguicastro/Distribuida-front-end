@@ -3,7 +3,11 @@ import ProtectedPage from "../../components/ProtectedPage";
 import useHealthSysData from "../../hooks/useHealthSysData";
 
 const emptyForm = {
-  name: "", birthDate: "", sexo: "", phone: "", allergy: "", vaccine: ""
+  name: "",
+  birthDate: "",
+  sexo: "",
+  phone: "",
+  sintomas: ""
 };
 
 export default function RecepcionistaDashboard() {
@@ -11,6 +15,7 @@ export default function RecepcionistaDashboard() {
   const [form, setForm] = useState(emptyForm);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [saving, setSaving] = useState(false);
 
   if (!loaded) return <div className="loading-screen">Carregando...</div>;
 
@@ -23,12 +28,15 @@ export default function RecepcionistaDashboard() {
     event.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
+    setSaving(true);
     try {
       await addPatient(form);
-      setSuccessMessage("Paciente cadastrado com sucesso.");
+      setSuccessMessage("Paciente cadastrado com sucesso. Triagem gerada automaticamente.");
       setForm(emptyForm);
     } catch (error) {
       setErrorMessage(error.message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -44,9 +52,9 @@ export default function RecepcionistaDashboard() {
           <strong>{data.triages.length}</strong>
         </div>
         <div className="card">
-          <p className="card-label">Aguardando atendimento</p>
+          <p className="card-label">Triagens alto risco</p>
           <strong>
-            {data.triages.filter((t) => t.status === "Em observacao").length}
+            {data.triages.filter((t) => t.nivelRisco === "ALTO").length}
           </strong>
         </div>
       </section>
@@ -61,7 +69,13 @@ export default function RecepcionistaDashboard() {
           </label>
           <label>
             Data de nascimento
-            <input type="date" name="birthDate" value={form.birthDate} onChange={handleChange} required />
+            <input
+              type="date"
+              name="birthDate"
+              value={form.birthDate}
+              onChange={handleChange}
+              required
+            />
           </label>
           <label>
             Sexo
@@ -77,27 +91,34 @@ export default function RecepcionistaDashboard() {
             <input name="phone" value={form.phone} onChange={handleChange} required />
           </label>
           <label>
-            Alergia
-            <input name="allergy" value={form.allergy} onChange={handleChange} />
-          </label>
-          <label>
-            Vacina
-            <input name="vaccine" value={form.vaccine} onChange={handleChange} />
+            Sintomas iniciais
+            <textarea
+              name="sintomas"
+              value={form.sintomas}
+              onChange={handleChange}
+              rows="3"
+              placeholder="Descreva os sintomas (dispara a triagem automatica)"
+            />
           </label>
 
           {errorMessage && <p className="error-text">{errorMessage}</p>}
           {successMessage && <p className="success-text">{successMessage}</p>}
 
-          <button className="primary-button" type="submit">Cadastrar paciente</button>
+          <button className="primary-button" type="submit" disabled={saving}>
+            {saving ? "Cadastrando..." : "Cadastrar paciente"}
+          </button>
         </form>
 
         <div className="card">
-          <h3>Pacientes cadastrados hoje</h3>
+          <h3>Pacientes recentes</h3>
           <div className="stack-list">
+            {data.patients.length === 0 && (
+              <p style={{ color: "#888" }}>Nenhum paciente cadastrado.</p>
+            )}
             {data.patients.slice(-5).reverse().map((patient) => (
               <div className="list-row" key={patient.id}>
                 <div>
-                  <strong>{patient.name}</strong>
+                  <strong>{patient.nome || patient.name}</strong>
                   <p>{patient.telefone || patient.phone}</p>
                 </div>
                 <span className="tag">{patient.sexo || "—"}</span>

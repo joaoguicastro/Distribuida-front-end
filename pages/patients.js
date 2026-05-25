@@ -7,8 +7,7 @@ const emptyForm = {
   birthDate: "",
   sexo: "",
   phone: "",
-  allergy: "",
-  vaccine: ""
+  sintomas: ""
 };
 
 export default function PatientsPage() {
@@ -16,6 +15,7 @@ export default function PatientsPage() {
   const [form, setForm] = useState(emptyForm);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [saving, setSaving] = useState(false);
 
   if (!loaded) {
     return <div className="loading-screen">Carregando dados...</div>;
@@ -30,20 +30,21 @@ export default function PatientsPage() {
     event.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
+    setSaving(true);
 
     try {
       await addPatient(form);
-      setSuccessMessage("Paciente cadastrado no backend com sucesso.");
+      setSuccessMessage("Paciente cadastrado com sucesso.");
+      setForm(emptyForm);
     } catch (error) {
       setErrorMessage(error.message);
-      return;
+    } finally {
+      setSaving(false);
     }
-
-    setForm(emptyForm);
   }
 
   return (
-    <ProtectedPage title="Gestao de Pacientes" allowedRoles={["MEDICO","RECEPCIONISTA","ADMIN"]}>
+    <ProtectedPage title="Gestao de Pacientes" allowedRoles={["MEDICO", "RECEPCIONISTA", "ADMIN"]}>
       <section className="two-columns">
         <form className="card form-card" onSubmit={handleSubmit}>
           <h3>Novo paciente</h3>
@@ -80,21 +81,22 @@ export default function PatientsPage() {
           </label>
 
           <label>
-            Alergia
-            <input name="allergy" value={form.allergy} onChange={handleChange} />
+            Sintomas iniciais
+            <textarea
+              name="sintomas"
+              value={form.sintomas}
+              onChange={handleChange}
+              rows="3"
+              placeholder="Descreva os sintomas do paciente (dispara a triagem automatica)"
+            />
           </label>
-
-          <label>
-            Vacina
-            <input name="vaccine" value={form.vaccine} onChange={handleChange} />
-          </label>
-
-          <button className="primary-button" type="submit">
-            Salvar paciente
-          </button>
 
           {errorMessage && <p className="error-text">{errorMessage}</p>}
           {successMessage && <p className="success-text">{successMessage}</p>}
+
+          <button className="primary-button" type="submit" disabled={saving}>
+            {saving ? "Salvando..." : "Salvar paciente"}
+          </button>
         </form>
 
         <div className="card">
@@ -103,19 +105,26 @@ export default function PatientsPage() {
             <table>
               <thead>
                 <tr>
+                  <th>ID</th>
                   <th>Nome</th>
                   <th>Telefone</th>
-                  <th>Alergia</th>
-                  <th>Vacina</th>
+                  <th>Sexo</th>
                 </tr>
               </thead>
               <tbody>
+                {data.patients.length === 0 && (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: "center", color: "#888" }}>
+                      Nenhum paciente cadastrado.
+                    </td>
+                  </tr>
+                )}
                 {data.patients.map((patient) => (
                   <tr key={patient.id}>
-                    <td>{patient.name}</td>
+                    <td>{patient.id}</td>
+                    <td>{patient.nome || patient.name}</td>
                     <td>{patient.telefone || patient.phone}</td>
-                    <td>{patient.allergy || "Nao informado"}</td>
-                    <td>{patient.vaccine || "Nao informado"}</td>
+                    <td>{patient.sexo || "—"}</td>
                   </tr>
                 ))}
               </tbody>
