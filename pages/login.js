@@ -13,7 +13,7 @@ function validateEmail(email) {
 }
 
 function validateSenha(senha) {
-  if (senha.length < 6) return "A senha deve ter no mínimo 6 caracteres.";
+  if (senha.length < 6) return "A senha deve ter no mínimo 9 caracteres.";
   return "";
 }
 
