@@ -112,7 +112,7 @@ export default function LoginPage() {
               value={form.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="usuario@dominio.com"
+              placeholder="usuario@gmail.com"
               autoComplete="email"
               aria-describedby={errors.email ? "email-error" : undefined}
               style={errors.email && touched.email ? { borderColor: "#c0392b" } : {}}
