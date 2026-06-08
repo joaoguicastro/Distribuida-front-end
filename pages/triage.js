@@ -6,7 +6,7 @@ const gS=()=>{try{return JSON.parse(window.localStorage.getItem("hs-session"));}
 const EMPTY={pacienteId:"",queixaPrincipal:"",temperaturaCelsius:"",frequenciaCardiaca:"",pressao:"",saturacaoOxigenio:"",nivelDor:"",dificuldadeRespiratoria:false,alteracaoConsciencia:false,sangramentoAtivo:false,convulsao:false,observacaoLivre:""};
 function RB({n}){const v=(n||"").toUpperCase();if(v==="ALTO")return<span className="badge badge-red">● ALTO</span>;if(v==="MEDIO")return<span className="badge badge-amber">● MEDIO</span>;if(v==="BAIXO")return<span className="badge badge-green">● BAIXO</span>;return<span className="badge badge-gray">PENDENTE</span>;}
 const idade=(d)=>{if(!d)return 0;const n=new Date();const b=new Date(d);let i=n.getFullYear()-b.getFullYear();const m=n.getMonth()-b.getMonth();if(m<0||(m===0&&n.getDate()<b.getDate()))i--;return Math.max(i,0);};
-const num=(v)=>v===""||v===null||v===undefined?null:Number(v);
+const num=(v)=>v===""||v===null||v===undefined?null:Math.round(Number(v));
 
 export default function Triage(){
   const[triagens,setTriagens]=useState([]);const[pacientes,setPacientes]=useState([]);const[loaded,setL]=useState(false);const[filter,setFl]=useState("TODOS");

@@ -1,87 +1,198 @@
-import { useEffect, useState } from "react";
-import ProtectedPage from "../components/ProtectedPage";
-import { fetchTriagens } from "../lib/api";
+import { useEffect, useState, useMemo } from "react";
+import Layout from "../components/Layout";
+import {
+  fetchPacientes,
+  fetchProntuarioByPaciente,
+  addConsulta,
+  addExame,
+  addMedicamento,
+} from "../lib/api";
 
-const NIVEL_RISCO_LABEL = {
-  BAIXO: "Baixo",
-  MEDIO: "Médio",
-  ALTO: "Alto"
+const gS = () => {
+  try { return JSON.parse(window.localStorage.getItem("hs-session")); } catch { return null; }
 };
 
-const NIVEL_RISCO_CLASS = {
-  BAIXO: "risk-baixo",
-  MEDIO: "risk-medio",
-  ALTO: "risk-alto"
-};
+const TABS = ["Consulta", "Exame", "Medicamento"];
 
-const SESSION_KEY = "healthsys-session";
+const EMPTY_CONSULTA = { tipo: "", queixaPrincipal: "", exameFisico: "", hipoteseDiagnostica: "", conduta: "" };
+const EMPTY_EXAME    = { tipoExame: "", resultado: "", observacoes: "" };
+const EMPTY_MED      = { nomeMedicamento: "", dosagem: "", frequencia: "" };
 
-export default function TriagePage() {
-  const [triagens, setTriagens] = useState([]);
+export default function Records() {
+  const [pacientes, setPacientes] = useState([]);
+  const [pacienteId, setPacienteId] = useState("");
+  const [prontuario, setProntuario] = useState(null);
+  const [loadingPront, setLoadingPront] = useState(false);
+  const [tab, setTab] = useState("Consulta");
+  const [formC, setFormC] = useState(EMPTY_CONSULTA);
+  const [formE, setFormE] = useState(EMPTY_EXAME);
+  const [formM, setFormM] = useState(EMPTY_MED);
+  const [msg, setMsg] = useState({ t: "", x: "" });
+  const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(SESSION_KEY);
-    const session = saved ? JSON.parse(saved) : null;
-    const token = session?.token;
-
-    if (!token || session?.devBypass) {
-      setLoaded(true);
-      return;
-    }
-
-    fetchTriagens(token)
-      .then((data) => {
-        setTriagens(data);
-        setLoaded(true);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoaded(true);
-      });
+    const s = gS();
+    if (!s) return;
+    fetchPacientes(s.token)
+      .then(d => { setPacientes(Array.isArray(d) ? d : []); setLoaded(true); })
+      .catch(() => setLoaded(true));
   }, []);
 
-  if (!loaded) {
-    return <div className="loading-screen">Carregando triagens...</div>;
+  useEffect(() => {
+    if (!pacienteId) { setProntuario(null); return; }
+    const s = gS();
+    setLoadingPront(true);
+    fetchProntuarioByPaciente(pacienteId, s?.token)
+      .then(d => { setProntuario(d); setLoadingPront(false); })
+      .catch(() => { setProntuario(null); setLoadingPront(false); });
+  }, [pacienteId]);
+
+  async function salvar(e) {
+    e.preventDefault();
+    if (!pacienteId) { setMsg({ t: "err", x: "Selecione um paciente." }); return; }
+    const s = gS();
+    setSaving(true); setMsg({ t: "", x: "" });
+    try {
+      let novo;
+      if (tab === "Consulta") novo = await addConsulta(pacienteId, formC, s?.token);
+      else if (tab === "Exame") novo = await addExame(pacienteId, formE, s?.token);
+      else novo = await addMedicamento(pacienteId, formM, s?.token);
+      setProntuario(novo);
+      setFormC(EMPTY_CONSULTA); setFormE(EMPTY_EXAME); setFormM(EMPTY_MED);
+      setMsg({ t: "ok", x: `${tab} adicionado(a) com sucesso.` });
+    } catch (err) {
+      setMsg({ t: "err", x: err.message });
+    } finally { setSaving(false); }
   }
 
+  const paciente = useMemo(() => pacientes.find(p => p.id === Number(pacienteId)), [pacientes, pacienteId]);
+
   return (
-    <ProtectedPage title="Painel de Triagem" allowedRoles={["MEDICO", "RECEPCIONISTA", "ADMIN"]}>
-      <div className="card" style={{ marginBottom: "16px", background: "#f0f7ff", border: "1px solid #bdd6ee" }}>
-        <p style={{ margin: 0, color: "#12344d" }}>
-          <strong>Como funciona:</strong> A triagem é gerada automaticamente pelo sistema quando um
-          paciente é cadastrado com sintomas. Os níveis de risco são classificados pelo backend como{" "}
-          <strong>BAIXO</strong>, <strong>MEDIO</strong> ou <strong>ALTO</strong>.
-        </p>
-      </div>
-
-      {error && <p className="error-text" style={{ marginBottom: "16px" }}>{error}</p>}
-
-      {triagens.length === 0 ? (
+    <Layout title="Prontuários" sub="Consultas, exames e medicamentos" crumb="Médico">
+      <div className="g2">
+        {/* FORMULÁRIO */}
         <div className="card">
-          <p style={{ margin: 0, color: "#888" }}>Nenhuma triagem registrada ainda. Cadastre um paciente com sintomas para gerar a triagem automaticamente.</p>
+          <div className="card-head">
+            <div>
+              <div className="card-title">Adicionar registro</div>
+              <div className="card-sub">Selecione o paciente e o tipo de registro</div>
+            </div>
+          </div>
+
+          <div className="fg" style={{ marginBottom: 16 }}>
+            <label className="flabel">Paciente <span className="req">*</span></label>
+            <select className="fselect" value={pacienteId} onChange={e => setPacienteId(e.target.value)}>
+              <option value="">Selecione...</option>
+              {pacientes.map(p => <option key={p.id} value={p.id}>{p.nome} #{p.id}</option>)}
+            </select>
+          </div>
+
+          <div className="tabs" style={{ marginBottom: 16 }}>
+            {TABS.map(t => (
+              <button key={t} className={"tab" + (tab === t ? " on" : "")} onClick={() => { setTab(t); setMsg({ t: "", x: "" }); }}>
+                {t}
+              </button>
+            ))}
+          </div>
+
+          {msg.x && <div className={"alert alert-" + msg.t}>{msg.t === "ok" ? "✓" : "⚠"} {msg.x}</div>}
+
+          <form onSubmit={salvar}>
+            {tab === "Consulta" && (
+              <>
+                <div className="fg"><label className="flabel">Tipo</label><input className="finput" placeholder="Ex: Clínica geral" value={formC.tipo} onChange={e => setFormC(f => ({ ...f, tipo: e.target.value }))} /></div>
+                <div className="fg"><label className="flabel">Queixa principal</label><textarea className="ftextarea" value={formC.queixaPrincipal} onChange={e => setFormC(f => ({ ...f, queixaPrincipal: e.target.value }))} /></div>
+                <div className="fg"><label className="flabel">Exame físico</label><textarea className="ftextarea" value={formC.exameFisico} onChange={e => setFormC(f => ({ ...f, exameFisico: e.target.value }))} /></div>
+                <div className="fg"><label className="flabel">Hipótese diagnóstica</label><input className="finput" value={formC.hipoteseDiagnostica} onChange={e => setFormC(f => ({ ...f, hipoteseDiagnostica: e.target.value }))} /></div>
+                <div className="fg"><label className="flabel">Conduta</label><textarea className="ftextarea" value={formC.conduta} onChange={e => setFormC(f => ({ ...f, conduta: e.target.value }))} /></div>
+              </>
+            )}
+            {tab === "Exame" && (
+              <>
+                <div className="fg"><label className="flabel">Tipo de exame</label><input className="finput" placeholder="Ex: Hemograma, Raio-X..." value={formE.tipoExame} onChange={e => setFormE(f => ({ ...f, tipoExame: e.target.value }))} /></div>
+                <div className="fg"><label className="flabel">Resultado</label><textarea className="ftextarea" value={formE.resultado} onChange={e => setFormE(f => ({ ...f, resultado: e.target.value }))} /></div>
+                <div className="fg"><label className="flabel">Observações</label><textarea className="ftextarea" value={formE.observacoes} onChange={e => setFormE(f => ({ ...f, observacoes: e.target.value }))} /></div>
+              </>
+            )}
+            {tab === "Medicamento" && (
+              <>
+                <div className="fg"><label className="flabel">Medicamento</label><input className="finput" placeholder="Ex: Amoxicilina" value={formM.nomeMedicamento} onChange={e => setFormM(f => ({ ...f, nomeMedicamento: e.target.value }))} /></div>
+                <div className="frow">
+                  <div className="fg"><label className="flabel">Dosagem</label><input className="finput" placeholder="Ex: 500mg" value={formM.dosagem} onChange={e => setFormM(f => ({ ...f, dosagem: e.target.value }))} /></div>
+                  <div className="fg"><label className="flabel">Frequência</label><input className="finput" placeholder="Ex: 8/8h" value={formM.frequencia} onChange={e => setFormM(f => ({ ...f, frequencia: e.target.value }))} /></div>
+                </div>
+              </>
+            )}
+            <button className="btn btn-blue btn-full" type="submit" disabled={saving || !pacienteId}>
+              {saving ? "Salvando..." : `Salvar ${tab}`}
+            </button>
+          </form>
         </div>
-      ) : (
-        <div className="stack-list">
-          {triagens.slice().reverse().map((triagem) => (
-            <article className="record-card" key={triagem.id}>
-              <div className="section-title-row">
-                <strong>Paciente ID: {triagem.pacienteId}</strong>
-                <span className={`tag ${NIVEL_RISCO_CLASS[triagem.nivelRisco] || ""}`}>
-                  {NIVEL_RISCO_LABEL[triagem.nivelRisco] || triagem.nivelRisco}
-                </span>
+
+        {/* PRONTUÁRIO */}
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <div className="card-title">Prontuário</div>
+              <div className="card-sub">{paciente ? paciente.nome : "Selecione um paciente"}</div>
+            </div>
+          </div>
+
+          {!pacienteId && (
+            <div className="empty"><span className="empty-icon">📋</span><p>Selecione um paciente ao lado</p></div>
+          )}
+
+          {loadingPront && <div style={{ textAlign: "center", padding: 32 }}><div className="spinner" style={{ margin: "0 auto" }} /></div>}
+
+          {prontuario && !loadingPront && (
+            <>
+              {/* Consultas */}
+              <div style={{ marginBottom: 16 }}>
+                <div className="card-title" style={{ fontSize: 13, marginBottom: 8 }}>Consultas ({prontuario.consultas?.length || 0})</div>
+                {(!prontuario.consultas || prontuario.consultas.length === 0)
+                  ? <p style={{ color: "#888", fontSize: 13 }}>Nenhuma consulta registrada.</p>
+                  : prontuario.consultas.slice().reverse().map(c => (
+                    <div key={c.id} className="p-row" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+                      <strong>{c.tipo || "Consulta"}</strong>
+                      {c.queixaPrincipal && <p style={{ margin: "2px 0", fontSize: 12, color: "#555" }}>Queixa: {c.queixaPrincipal}</p>}
+                      {c.hipoteseDiagnostica && <p style={{ margin: "2px 0", fontSize: 12, color: "#555" }}>Diagnóstico: {c.hipoteseDiagnostica}</p>}
+                    </div>
+                  ))
+                }
               </div>
-              <p>
-                <strong>Status:</strong> {triagem.status || "—"}
-              </p>
-              <p>
-                <strong>ID da Triagem:</strong> {triagem.id}
-              </p>
-            </article>
-          ))}
+
+              {/* Exames */}
+              <div style={{ marginBottom: 16 }}>
+                <div className="card-title" style={{ fontSize: 13, marginBottom: 8 }}>Exames ({prontuario.exames?.length || 0})</div>
+                {(!prontuario.exames || prontuario.exames.length === 0)
+                  ? <p style={{ color: "#888", fontSize: 13 }}>Nenhum exame registrado.</p>
+                  : prontuario.exames.slice().reverse().map(ex => (
+                    <div key={ex.id} className="p-row" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+                      <strong>{ex.tipoExame || "Exame"}</strong>
+                      {ex.resultado && <p style={{ margin: "2px 0", fontSize: 12, color: "#555" }}>Resultado: {ex.resultado}</p>}
+                    </div>
+                  ))
+                }
+              </div>
+
+              {/* Medicamentos */}
+              <div>
+                <div className="card-title" style={{ fontSize: 13, marginBottom: 8 }}>Medicamentos ({prontuario.medicamentos?.length || 0})</div>
+                {(!prontuario.medicamentos || prontuario.medicamentos.length === 0)
+                  ? <p style={{ color: "#888", fontSize: 13 }}>Nenhum medicamento registrado.</p>
+                  : prontuario.medicamentos.slice().reverse().map(m => (
+                    <div key={m.id} className="p-row" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+                      <strong>{m.nomeMedicamento || "Medicamento"}</strong>
+                      <p style={{ margin: "2px 0", fontSize: 12, color: "#555" }}>{m.dosagem} · {m.frequencia}</p>
+                    </div>
+                  ))
+                }
+              </div>
+            </>
+          )}
         </div>
-      )}
-    </ProtectedPage>
+      </div>
+    </Layout>
   );
 }

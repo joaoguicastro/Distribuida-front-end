@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import ProtectedPage from "../components/ProtectedPage";
 import { fetchNotificacoes } from "../lib/api";
 
-const SESSION_KEY = "healthsys-session";
+const SESSION_KEY = "hs-session";
 
 const NIVEL_LABEL = { BAIXO: "Baixo", MEDIO: "Médio", ALTO: "Alto" };
 const NIVEL_CLASS = { BAIXO: "risk-baixo", MEDIO: "risk-medio", ALTO: "risk-alto" };
